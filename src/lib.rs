@@ -1,8 +1,37 @@
 //! Store program/save files in a unique folder (`.filestronghold-rs/`) across operating systems.
 //!
 //! # Getting Started
+//! Add the following to your Cargo.toml:
+//! 
+//! ```toml
+//! [dependencies]
+//! stronghold = { path = "../" }
+//! serde = "1.0"
+//! serde_derive = "1.0"
 //! ```
-
+//!
+//! This program saves a file under a folder titled with the crates name, and then opens it back up
+//! again to make sure it is the same:
+//!
+//! ```rust
+//! use stronghold::*;
+//! #[macro_use]
+//! extern crate serde_derive;
+//! 
+//! #[derive(Debug, PartialEq, Serialize, Deserialize)]
+//! struct Data {
+//!     x: u32,
+//!     y: u32,
+//!     text: String,
+//! }
+//! 
+//! fn main() {
+//!     let data: Data = Data { x: 0, y: 0, text: "Hello, world!".to_string() };
+//!     let info = save!("savefile", data).unwrap();
+//!     println!("Saved: {:?}", info);
+//!     let file: Data = load!("savefile").unwrap();
+//!     assert_eq!(data, file);
+//! }
 //! ```
 
 use std::fs::File;
@@ -50,6 +79,7 @@ pub struct Info {
 }
 
 /// Save a file.  Returns `None` when computer is out of space.
+#[doc(hidden)]
 pub fn save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
     where T: Serialize
 {
@@ -76,6 +106,7 @@ pub fn save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
 }
 
 /// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
+#[doc(hidden)]
 pub fn load<T>(crate_name: &str, filename: &str) -> Option<T>
     where for<'de> T: serde::de::Deserialize<'de>
 {
@@ -97,12 +128,14 @@ pub fn load<T>(crate_name: &str, filename: &str) -> Option<T>
     }
 }
 
+/// Save a file.  Returns `None` when computer is out of space.
 #[macro_export] macro_rules! save {
     ($filename: expr, $data: expr) => {
-        $crate::save(env!("CARGO_PKG_NAME"), $filename, $data)
+        $crate::save(env!("CARGO_PKG_NAME"), $filename, &$data)
     }
 }
 
+/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
 #[macro_export] macro_rules! load {
     ($filename: expr) => {
         $crate::load(env!("CARGO_PKG_NAME"), $filename)

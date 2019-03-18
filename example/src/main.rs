@@ -11,7 +11,7 @@ struct Data {
 
 fn main() {
     let data: Data = Data { x: 0, y: 0, text: "Hello, world!".to_string() };
-    let info = save!("savefile", &data).unwrap();
+    let info = save!("savefile", data).unwrap();
     println!("Saved: {:?}", info);
     let file: Data = load!("savefile").unwrap();
     assert_eq!(data, file);
