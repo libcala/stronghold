@@ -1,0 +1,10 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Jeron Aldaron Lau <jeronaldaron@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+stronghold = { path = "../" }
+serde = "1.0"
+serde_derive = "1.0"

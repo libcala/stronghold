@@ -1,2 +1,5 @@
 # Stronghold
-Store program/save files in their correct/unique places across operating systems.
+Store program/save files in a unique folder (`.filestronghold-rs/`) across operating systems.
+
+## Getting Started
+

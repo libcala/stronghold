@@ -1,7 +1,28 @@
+# Stronghold
+#
+# Copyright © 2019 Jeron Aldaron Lau.
+# Dual-licensed under either the MIT License or the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_BSL.txt or copy at https://www.boost.org/LICENSE_1_0.txt, and
+# accompanying file LICENSE_MIT.txt or copy at https://opensource.org/licenses/MIT)
+
 [package]
 name = "stronghold"
 version = "0.1.0"
 authors = ["Jeron Aldaron Lau <jeronaldaron@gmail.com>"]
 edition = "2018"
 
+license = "MIT / BSL-1.0"
+description = "Store program/save files in a unique folder across operating systems."
+documentation = "https://docs.rs/stronghold"
+homepage = "https://jeronaldaron.plopgrizzly.com/stronghold"
+repository = "https://github.com/OxyDeadbeef/stronghold"
+readme = "README.md"
+keywords = ["files", "filesystem", "cross-platform", "compression", "bincode"]
+categories = ["os", "config", "encoding", "filesystem", "parsing"]
+
 [dependencies]
+# For Serialization
+bincode = "1.1"
+serde = "1.0"
+# For Compression
+miniz_oxide = "0.2"
