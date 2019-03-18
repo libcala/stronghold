@@ -48,7 +48,11 @@ const HEADER_V1: &'static [u8; 4] = b"St\x00\x01";
 
 fn path(crate_name: &str, filename: &str) -> PathBuf {
     let mut path = if cfg!(not(target_os = "android")) {
-        let home_dir = match std::env::var("HOME") {
+        let home_dir = match std::env::var(if cfg!(target_os = "windows") {
+            "HOMEPATH"
+        } else {
+            "HOME"
+        }) {
             Ok(val) => val,
             Err(e) => panic!("couldn't interpret $HOME: {}", e),
         };
