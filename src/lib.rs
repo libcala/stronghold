@@ -2,10 +2,10 @@
 //!
 //! # Getting Started
 //! Add the following to your Cargo.toml:
-//! 
-//! ```toml
+//!
+//! ```TOML
 //! [dependencies]
-//! stronghold = { path = "../" }
+//! stronghold = "0.1"
 //! serde = "1.0"
 //! serde_derive = "1.0"
 //! ```
@@ -17,14 +17,14 @@
 //! use stronghold::*;
 //! #[macro_use]
 //! extern crate serde_derive;
-//! 
+//!
 //! #[derive(Debug, PartialEq, Serialize, Deserialize)]
 //! struct Data {
 //!     x: u32,
 //!     y: u32,
 //!     text: String,
 //! }
-//! 
+//!
 //! fn main() {
 //!     let data: Data = Data { x: 0, y: 0, text: "Hello, world!".to_string() };
 //!     let info = save!("savefile", data).unwrap();
@@ -38,11 +38,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-pub use serde::{Serialize, Deserialize};
-use bincode::{serialize, deserialize};
+use bincode::{deserialize, serialize};
+use serde::{Deserialize, Serialize};
 
-use miniz_oxide::inflate::decompress_to_vec;
 use miniz_oxide::deflate::compress_to_vec;
+use miniz_oxide::inflate::decompress_to_vec;
 
 const HEADER_V1: &'static [u8; 4] = b"St\x00\x01";
 
@@ -82,10 +82,11 @@ pub struct Info {
     pub c_bytes: usize,
 }
 
-/// Save a file.  Returns `None` when computer is out of space.
+/// Save a file.  Returns `None` when storage drive is out of memory.
 #[doc(hidden)]
-pub fn save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
-    where T: Serialize
+pub fn hiddensh_save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
+where
+    T: Serialize,
 {
     let mut file = if let Ok(file) = File::create(path(crate_name, filename)) {
         file
@@ -111,8 +112,9 @@ pub fn save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
 
 /// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
 #[doc(hidden)]
-pub fn load<T>(crate_name: &str, filename: &str) -> Option<T>
-    where for<'de> T: serde::de::Deserialize<'de>
+pub fn hiddensh_load<T>(crate_name: &str, filename: &str) -> Option<T>
+where
+    for<'de> T: Deserialize<'de>,
 {
     let mut file = if let Ok(file) = File::open(path(crate_name, filename)) {
         file
@@ -132,18 +134,33 @@ pub fn load<T>(crate_name: &str, filename: &str) -> Option<T>
     }
 }
 
-/// Save a file.  Returns `None` when computer is out of space.
-#[macro_export] macro_rules! save {
+/// Save a file.  Returns `None` when storage drive is out of memory.  Returns `Some(Info)`
+/// otherwise.
+///
+/// ```
+/// type Data: u32;
+/// let data: Data = 0;
+/// let info: Info = save!("filename", data);
+/// ```
+#[macro_export]
+macro_rules! save {
     ($filename: expr, $data: expr) => {
-        $crate::save(env!("CARGO_PKG_NAME"), $filename, &$data)
-    }
+        $crate::hiddensh_save(env!("CARGO_PKG_NAME"), $filename, &$data)
+    };
 }
 
-/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
-#[macro_export] macro_rules! load {
+/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.  Returns `Some(T)`
+/// otherwise
+///
+/// ```
+/// type Data: u32;
+/// let data: Data = load!("filename");
+/// ```
+#[macro_export]
+macro_rules! load {
     ($filename: expr) => {
-        $crate::load(env!("CARGO_PKG_NAME"), $filename)
-    }
+        $crate::hiddensh_load(env!("CARGO_PKG_NAME"), $filename)
+    };
 }
 
 #[cfg(test)]
