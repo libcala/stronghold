@@ -7,7 +7,7 @@
 
 [package]
 name = "stronghold"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jeron Aldaron Lau <jeronaldaron@gmail.com>"]
 edition = "2018"
 
@@ -25,4 +25,4 @@ categories = ["os", "config", "encoding", "filesystem", "parsing"]
 bincode = "1.1"
 serde = "1.0"
 # For Compression
-miniz_oxide = "0.2"
+zip = "0.5"

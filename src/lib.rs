@@ -1,4 +1,4 @@
-//! Store program/save files in a unique folder (`.filestronghold-rs/`) across operating systems.
+//! Store program/save files in a unique folder across operating systems.
 //!
 //! # Getting Started
 //! Add the following to your Cargo.toml:
@@ -41,12 +41,13 @@ use std::path::PathBuf;
 use bincode::{deserialize, serialize};
 use serde::{Deserialize, Serialize};
 
-use miniz_oxide::deflate::compress_to_vec;
-use miniz_oxide::inflate::decompress_to_vec;
+use zip;
 
-const HEADER_V1: &'static [u8; 4] = b"St\x00\x01";
+fn path(filename: &str) -> PathBuf {
+    let mut crate_name = PathBuf::new();
+    crate_name.push(std::env::args().next().unwrap());
+    let crate_name = crate_name.file_name().unwrap();
 
-fn path(crate_name: &str, filename: &str) -> PathBuf {
     let mut path = if cfg!(not(target_os = "android")) {
         let home_dir = match std::env::var(if cfg!(target_os = "windows") {
             "HOMEPATH"
@@ -63,7 +64,7 @@ fn path(crate_name: &str, filename: &str) -> PathBuf {
         unimplemented!()
     };
 
-    path.push(".filestronghold-rs");
+    path.push(".dive");
     path.push(crate_name);
 
     std::fs::create_dir_all(&path).unwrap();
@@ -73,94 +74,74 @@ fn path(crate_name: &str, filename: &str) -> PathBuf {
     path
 }
 
-/// Save file information.
-#[derive(Debug)]
-pub struct Info {
-    /// Number of bytes uncompressed.
-    pub u_bytes: usize,
-    /// Number of bytes compressed.
-    pub c_bytes: usize,
-}
-
-/// Save a file.  Returns `None` when storage drive is out of memory.
-#[doc(hidden)]
-pub fn hiddensh_save<T>(crate_name: &str, filename: &str, data: &T) -> Option<Info>
+/// Save a file.  Returns `true` when storage drive is out of memory.
+pub fn save<T>(zipfilename: &str, filename: &str, data: &T) -> bool
 where
     T: Serialize,
 {
-    let mut file = if let Ok(file) = File::create(path(crate_name, filename)) {
+    let data: Vec<u8> = serialize(data).unwrap();
+    let file = if let Ok(file) = File::create(path(zipfilename)) {
         file
     } else {
-        return None;
+        return true;
     };
-    let data: Vec<u8> = serialize(data).unwrap();
-    let compressed = compress_to_vec(&data[..], 10);
+    let mut zip = zip::write::ZipWriter::new(file);
+    let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated).unix_permissions(0o755);
+    zip.start_file(filename, options).unwrap();
+    zip.write_all(&data[..]).unwrap();
 
-    // 4-byte Stronghold file version 0.1 (Deflate on Bincode).
-    if file.write_all(HEADER_V1).is_err() {
-        return None;
-    }
-    if file.write_all(&compressed[..]).is_err() {
-        return None;
-    }
-
-    Some(Info {
-        u_bytes: data.len(),
-        c_bytes: compressed.len() + 4,
-    })
+    zip.finish().unwrap();
+    false
 }
 
-/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
-#[doc(hidden)]
-pub fn hiddensh_load<T>(crate_name: &str, filename: &str) -> Option<T>
+/// Fetch a resource from this application's resource file.
+pub fn fetch<T>(filename: &str) -> Option<T>
 where
     for<'de> T: Deserialize<'de>,
 {
-    let mut file = if let Ok(file) = File::open(path(crate_name, filename)) {
+    let mut path = match std::env::current_exe() {
+        Ok(exe_path) => exe_path,
+        Err(_e) => return None,
+    };
+    path = path.with_extension("zip");
+
+    let file = if let Ok(file) = File::open(path) {
         file
     } else {
         return None;
     };
     let mut data = Vec::<u8>::new();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut file = match archive.by_name(filename) {
+        Ok(file) => file,
+        Err(..) => return None,
+    };
     file.read_to_end(&mut data).unwrap();
 
-    assert_eq!(&data[0..4], HEADER_V1);
+    let data = deserialize(data.as_slice()).unwrap();
+    Some(data)
+}
 
-    if let Ok(uncompressed) = decompress_to_vec(&data[4..]) {
-        let data = deserialize(uncompressed.as_slice()).unwrap();
-        Some(data)
+/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.
+pub fn load<T>(zipfilename: &str, filename: &str) -> Option<T>
+where
+    for<'de> T: Deserialize<'de>,
+{
+    let file = if let Ok(file) = File::open(path(zipfilename)) {
+        file
     } else {
-        None
-    }
-}
-
-/// Save a file.  Returns `None` when storage drive is out of memory.  Returns `Some(Info)`
-/// otherwise.
-///
-/// ```
-/// type Data: u32;
-/// let data: Data = 0;
-/// let info: Info = save!("filename", data);
-/// ```
-#[macro_export]
-macro_rules! save {
-    ($filename: expr, $data: expr) => {
-        $crate::hiddensh_save(env!("CARGO_PKG_NAME"), $filename, &$data)
+        return None;
     };
-}
-
-/// Load a save file.  Returns `None` if it doesn't exist or is corrupted.  Returns `Some(T)`
-/// otherwise
-///
-/// ```
-/// type Data: u32;
-/// let data: Data = load!("filename");
-/// ```
-#[macro_export]
-macro_rules! load {
-    ($filename: expr) => {
-        $crate::hiddensh_load(env!("CARGO_PKG_NAME"), $filename)
+    let mut data = Vec::<u8>::new();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut file = match archive.by_name(filename) {
+        Ok(file) => file,
+        Err(..) => return None,
     };
+    file.read_to_end(&mut data).unwrap();
+
+    let data = deserialize(data.as_slice()).unwrap();
+    Some(data)
 }
 
 #[cfg(test)]
