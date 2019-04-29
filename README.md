@@ -6,7 +6,7 @@ Add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-stronghold = "0.1"
+stronghold = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
 ```
