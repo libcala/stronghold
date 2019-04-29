@@ -1,5 +1,5 @@
 # Stronghold
-Store program/save files in a unique folder (`.filestronghold-rs/`) across operating systems.
+Store program/save files in a unique folder across operating systems.
 
 # Getting Started
 Add the following to your Cargo.toml:
@@ -28,17 +28,22 @@ struct Data {
 
 fn main() {
     let data: Data = Data { x: 0, y: 0, text: "Hello, world!".to_string() };
-    let info = save!("savefile", data).unwrap();
-    println!("Saved: {:?}", info);
-    let file: Data = load!("savefile").unwrap();
+    if save("savefile.zip", "bin/data", &data) {
+        panic!("Failed to save file!");
+    } else {
+        println!("Saved!");
+    }
+    let file: Data = load("savefile.zip", "bin/data").unwrap();
     assert_eq!(data, file);
+    println!("Loaded successfully!");
 }
 ```
 
 ## Features
 * Load and Save user-specific files in a folder named after the crate.
 * Works on Windows and Linux.
-* Small file sizes using pure Rust compression (`miniz_oxide`).
+* Small file sizes using pure Rust compression (`zip`).
+* Fetch ZIP'd resource files.
 
 ## Links
 * [Website](https://jeronaldaron.plopgrizzly.com/stronghold)
